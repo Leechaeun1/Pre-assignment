@@ -66,13 +66,13 @@ export async function authJson<T>(
   path: string,
   init: RequestInit = {}
 ): Promise<T> {
-  const first = await tryOnce<T>(path, init);
+  const first = await tryOnce(path, init);
   if (first.ok) return first.json();
 
   if (first.status === 401) {
     try {
       await refresh();
-      const second = await tryOnce<T>(path, init);
+      const second = await tryOnce(path, init);
       if (second.ok) return second.json();
       const msg = await second.text();
       throw new Error(msg || `HTTP ${second.status}`);
@@ -86,7 +86,7 @@ export async function authJson<T>(
   throw new Error(msg || `HTTP ${first.status}`);
 }
 
-async function tryOnce<T>(path: string, init: RequestInit) {
+async function tryOnce(path: string, init: RequestInit) {
   const access = getAccessToken();
   return fetch(`${API_BASE}${path}`, {
     ...init,

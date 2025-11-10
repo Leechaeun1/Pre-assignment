@@ -27,3 +27,16 @@ export async function fetchBoards(
 export async function fetchCategories() {
   return authJson<Record<string, string>>("/boards/categories");
 }
+
+export type BoardDetail = {
+  id: number;
+  title: string;
+  content: string;
+  boardCategory: string;
+  imageUrl?: string | null;
+  createdAt: string;
+};
+
+export async function fetchBoardById(id: string | number) {
+  return authJson<BoardDetail>(`/boards/${id}`, { method: "GET" });
+}
