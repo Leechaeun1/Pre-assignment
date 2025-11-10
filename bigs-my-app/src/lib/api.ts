@@ -1,0 +1,100 @@
+const API_BASE = process.env.NEXT_PUBLIC_API_BASE!;
+
+const ACCESS_KEY = "accessToken";
+const REFRESH_KEY = "refreshToken";
+
+export function getAccessToken() {
+  return typeof window !== "undefined"
+    ? localStorage.getItem(ACCESS_KEY)
+    : null;
+}
+export function getRefreshToken() {
+  return typeof window !== "undefined"
+    ? localStorage.getItem(REFRESH_KEY)
+    : null;
+}
+export function setTokens(access: string, refresh: string) {
+  if (typeof window === "undefined") return;
+  localStorage.setItem(ACCESS_KEY, access);
+  localStorage.setItem(REFRESH_KEY, refresh);
+}
+export function clearTokens() {
+  if (typeof window === "undefined") return;
+  localStorage.removeItem(ACCESS_KEY);
+  localStorage.removeItem(REFRESH_KEY);
+}
+
+async function rawJson<T>(path: string, init: RequestInit = {}): Promise<T> {
+  const res = await fetch(`${API_BASE}${path}`, {
+    ...init,
+    headers: {
+      "Content-Type": "application/json",
+      ...(init.headers || {}),
+    },
+  });
+  if (!res.ok) {
+    const msg = await res.text().catch(() => "");
+    throw new Error(msg || `HTTP ${res.status}`);
+  }
+  return res.json() as Promise<T>;
+}
+
+export async function signin(username: string, password: string) {
+  const data = await rawJson<{ accessToken: string; refreshToken: string }>(
+    "/auth/signin",
+    {
+      method: "POST",
+      body: JSON.stringify({ username, password }),
+    }
+  );
+  setTokens(data.accessToken, data.refreshToken);
+  return data;
+}
+
+export async function refresh() {
+  const token = getRefreshToken();
+  if (!token) throw new Error("No refresh token");
+  const data = await rawJson<{ accessToken: string; refreshToken: string }>(
+    "/auth/refresh",
+    { method: "POST", body: JSON.stringify({ refreshToken: token }) }
+  );
+  setTokens(data.accessToken, data.refreshToken);
+  return data.accessToken;
+}
+
+export async function authJson<T>(
+  path: string,
+  init: RequestInit = {}
+): Promise<T> {
+  const first = await tryOnce<T>(path, init);
+  if (first.ok) return first.json();
+
+  if (first.status === 401) {
+    try {
+      await refresh();
+      const second = await tryOnce<T>(path, init);
+      if (second.ok) return second.json();
+      const msg = await second.text();
+      throw new Error(msg || `HTTP ${second.status}`);
+    } catch (e: any) {
+      clearTokens();
+      throw new Error(e?.message || "Auth failed");
+    }
+  }
+
+  const msg = await first.text();
+  throw new Error(msg || `HTTP ${first.status}`);
+}
+
+async function tryOnce<T>(path: string, init: RequestInit) {
+  const access = getAccessToken();
+  return fetch(`${API_BASE}${path}`, {
+    ...init,
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: access ? `Bearer ${access}` : "",
+      ...(init.headers || {}),
+    },
+    cache: "no-store",
+  });
+}
