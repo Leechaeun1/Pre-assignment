@@ -17,20 +17,26 @@ export function setTokens(access: string, refresh: string) {
   if (typeof window === "undefined") return;
   localStorage.setItem(ACCESS_KEY, access);
   localStorage.setItem(REFRESH_KEY, refresh);
+  window.dispatchEvent(new Event("loginStatusChanged"));
 }
 export function clearTokens() {
   if (typeof window === "undefined") return;
   localStorage.removeItem(ACCESS_KEY);
   localStorage.removeItem(REFRESH_KEY);
+  window.dispatchEvent(new Event("loginStatusChanged"));
 }
 
-async function rawJson<T>(path: string, init: RequestInit = {}): Promise<T> {
+export async function rawJson<T>(
+  path: string,
+  init: RequestInit = {}
+): Promise<T> {
   const res = await fetch(`${API_BASE}${path}`, {
     ...init,
     headers: {
       "Content-Type": "application/json",
       ...(init.headers || {}),
     },
+    cache: "no-store",
   });
   if (!res.ok) {
     const msg = await res.text().catch(() => "");
@@ -67,18 +73,19 @@ export async function authJson<T>(
   init: RequestInit = {}
 ): Promise<T> {
   const first = await tryOnce(path, init);
-  if (first.ok) return first.json();
+  if (first.ok) return first.json() as Promise<T>;
 
   if (first.status === 401) {
     try {
       await refresh();
       const second = await tryOnce(path, init);
-      if (second.ok) return second.json();
+      if (second.ok) return second.json() as Promise<T>;
       const msg = await second.text();
       throw new Error(msg || `HTTP ${second.status}`);
-    } catch (e: any) {
+    } catch (e: unknown) {
       clearTokens();
-      throw new Error(e?.message || "Auth failed");
+      const message = e instanceof Error ? e.message : "Auth failed";
+      throw new Error(message);
     }
   }
 
@@ -92,7 +99,7 @@ async function tryOnce(path: string, init: RequestInit) {
     ...init,
     headers: {
       "Content-Type": "application/json",
-      Authorization: access ? `Bearer ${access}` : "",
+      ...(access ? { Authorization: `Bearer ${access}` } : {}),
       ...(init.headers || {}),
     },
     cache: "no-store",

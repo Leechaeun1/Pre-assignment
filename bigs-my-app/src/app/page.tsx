@@ -9,7 +9,6 @@ import {
 import { useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
-import AccountCircleOutlinedIcon from "@mui/icons-material/AccountCircleOutlined";
 import Link from "next/link";
 import Pagination from "@/components/common/Pagination";
 
@@ -114,26 +113,6 @@ export default function HomePage() {
 
   return (
     <main className="mx-auto max-w-3xl p-6">
-      <div className="mb-6 flex items-center justify-between">
-        <h1 className="text-2xl font-bold">게시판</h1>
-        <div className="flex items-center gap-2">
-          <Link
-            href="/mypage"
-            title="마이페이지"
-            className="rounded-full p-2 hover:bg-black/10"
-            aria-label="마이페이지로 이동"
-          >
-            <AccountCircleOutlinedIcon fontSize="medium" />
-          </Link>
-          <Link
-            href="/posts/new"
-            className="rounded-md bg-black px-3 py-2 text-sm text-white hover:opacity-90"
-          >
-            글쓰기
-          </Link>
-        </div>
-      </div>
-
       <div className="mb-4 flex flex-wrap gap-2">
         {cats.map((c) => (
           <button
