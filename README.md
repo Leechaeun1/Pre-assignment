@@ -1,4 +1,5 @@
 실행 순서
+
 1. 
 ```bash
 cd bigs-my-app
