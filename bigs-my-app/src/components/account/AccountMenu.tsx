@@ -55,7 +55,7 @@ export default function AccountMenu({
       <div className={clsx("mt-3 flex justify-end gap-2")}>
         <button
           onClick={onLogout}
-          className="rounded-md bg-red-500 px-3 py-1.5 text-sm text-white hover:opacity-90"
+          className="rounded-md bg-black px-3 py-1.5 text-sm text-white hover:opacity-90"
         >
           로그아웃
         </button>

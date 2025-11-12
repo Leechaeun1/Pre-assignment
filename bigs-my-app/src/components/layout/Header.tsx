@@ -63,9 +63,20 @@ export default function Header() {
                 )}
               </div>
             ) : (
-              <Link href="/login" className="text-gray-800 hover:text-black">
-                로그인
-              </Link>
+              <>
+                <Link
+                  href="/auth/login"
+                  className="text-gray-800 hover:text-black"
+                >
+                  로그인
+                </Link>
+                <Link
+                  href="/auth/signup"
+                  className="text-gray-800 hover:text-black"
+                >
+                  회원가입
+                </Link>
+              </>
             )}
 
             <Link

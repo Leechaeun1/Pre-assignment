@@ -120,3 +120,29 @@ async function tryOnce(path: string, init: RequestInit) {
 
   return response;
 }
+
+export async function postJsonNoBody(path: string, body: any): Promise<void> {
+  const url = `${API_BASE}${path}`;
+  const res = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+    cache: "no-store",
+  });
+
+  if (!res.ok) {
+    const msg = await res.text().catch(() => "");
+    throw new Error(msg || `HTTP ${res.status}`);
+  }
+}
+
+export type SignupPayload = {
+  username: string;
+  name: string;
+  password: string;
+  confirmPassword: string;
+};
+
+export async function signup(payload: SignupPayload) {
+  await postJsonNoBody("/auth/signup", payload);
+}
