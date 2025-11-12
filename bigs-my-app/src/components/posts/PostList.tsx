@@ -1,4 +1,3 @@
-// src/components/post/PostList.tsx
 "use client";
 
 import { BoardItem } from "@/lib/boards";

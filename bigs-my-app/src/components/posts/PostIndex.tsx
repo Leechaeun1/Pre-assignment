@@ -35,7 +35,6 @@ export default function PostIndex() {
   ]);
 
   const [rawList, setRawList] = useState<BoardItem[]>([]);
-  const [serverMeta, setServerMeta] = useState({ totalPages: 1, number: 0 });
 
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
@@ -65,10 +64,15 @@ export default function PostIndex() {
         const obj = await fetchCategories();
         const arr = [
           { key: "ALL", label: "전체" },
-          ...Object.entries(obj).map(([k, v]) => ({ key: k, label: v })),
+          ...Object.entries(obj).map(([k, v]) => ({
+            key: k,
+            label: v as string,
+          })),
         ];
         setCats(arr);
-      } catch {}
+      } catch {
+        //
+      }
     })();
   }, [isLoggedIn]);
 
@@ -78,31 +82,24 @@ export default function PostIndex() {
       setLoading(false);
       return;
     }
+
     (async () => {
       setLoading(true);
       setErr(null);
       try {
-        const requestPage = activeCat === "ALL" ? 0 : 0;
-        const requestSize = activeCat === "ALL" ? 1000 : 1000;
-
         const data: PageResp<BoardItem> = await fetchBoards({
-          page: requestPage,
-          size: requestSize,
-          category: activeCat === "ALL" ? undefined : activeCat,
+          page: 0,
+          size: 99999,
         });
 
         setRawList(data.content || []);
-        setServerMeta({
-          totalPages: data.totalPages ?? 1,
-          number: data.number ?? requestPage,
-        });
       } catch {
         setErr("목록을 불러오지 못했습니다.");
       } finally {
         setLoading(false);
       }
     })();
-  }, [page, activeCat, isLoggedIn]);
+  }, [isLoggedIn]);
 
   function changeCat(key: string) {
     setActiveCat(key);
@@ -115,30 +112,27 @@ export default function PostIndex() {
     pushQuery({ page: n });
   }
 
-  const filtered = useMemo(
-    () =>
-      activeCat === "ALL"
-        ? rawList
-        : rawList.filter((it) => it.category === activeCat),
-    [rawList, activeCat]
-  );
-
   const sortedList = useMemo(() => {
-    return [...filtered].sort(
+    return [...rawList].sort(
       (a, b) =>
         new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
     );
-  }, [filtered]);
+  }, [rawList]);
 
-  const localTotalPages = Math.max(1, Math.ceil(sortedList.length / PAGE_SIZE));
+  const filteredList = useMemo(() => {
+    if (activeCat === "ALL") {
+      return sortedList;
+    }
+    return sortedList.filter((item) => item.category === activeCat);
+  }, [sortedList, activeCat]);
 
-  const displayList =
-    activeCat === "ALL"
-      ? sortedList
-      : sortedList.slice(page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE);
+  const totalItems = filteredList.length;
+  const totalPagesForUI = Math.max(1, Math.ceil(totalItems / PAGE_SIZE));
 
-  const totalPagesForUI =
-    activeCat === "ALL" ? serverMeta.totalPages : localTotalPages;
+  const displayList = filteredList.slice(
+    page * PAGE_SIZE,
+    page * PAGE_SIZE + PAGE_SIZE
+  );
 
   if (!isLoggedIn) {
     return <LoginRequired />;
@@ -158,7 +152,7 @@ export default function PostIndex() {
           <PostListSkeleton rows={6} />
         ) : err ? (
           <div className="p-8 text-center text-red-600">{err}</div>
-        ) : displayList.length === 0 ? (
+        ) : totalItems === 0 ? (
           <div className="p-8 text-center text-gray-500">
             게시글이 없습니다.
           </div>

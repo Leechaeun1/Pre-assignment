@@ -1,4 +1,3 @@
-// src/components/post/CategoryFilter.tsx
 "use client";
 
 type Props = {
