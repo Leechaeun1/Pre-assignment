@@ -1,4 +1,3 @@
-// src/components/post/PostIndex.tsx
 "use client";
 
 import {
@@ -69,9 +68,7 @@ export default function PostIndex() {
           ...Object.entries(obj).map(([k, v]) => ({ key: k, label: v })),
         ];
         setCats(arr);
-      } catch {
-        // no-op
-      }
+      } catch {}
     })();
   }, [isLoggedIn]);
 
@@ -126,11 +123,19 @@ export default function PostIndex() {
     [rawList, activeCat]
   );
 
-  const localTotalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const sortedList = useMemo(() => {
+    return [...filtered].sort(
+      (a, b) =>
+        new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+    );
+  }, [filtered]);
+
+  const localTotalPages = Math.max(1, Math.ceil(sortedList.length / PAGE_SIZE));
+
   const displayList =
     activeCat === "ALL"
-      ? rawList
-      : filtered.slice(page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE);
+      ? sortedList
+      : sortedList.slice(page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE);
 
   const totalPagesForUI =
     activeCat === "ALL" ? serverMeta.totalPages : localTotalPages;
