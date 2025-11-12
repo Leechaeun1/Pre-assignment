@@ -82,8 +82,8 @@ export default function PostIndex() {
       setLoading(true);
       setErr(null);
       try {
-        const requestPage = activeCat === "ALL" ? page : 0;
-        const requestSize = activeCat === "ALL" ? PAGE_SIZE : 1000;
+        const requestPage = activeCat === "ALL" ? 0 : 0;
+        const requestSize = activeCat === "ALL" ? 1000 : 1000;
 
         const data: PageResp<BoardItem> = await fetchBoards({
           page: requestPage,
