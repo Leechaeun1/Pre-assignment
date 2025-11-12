@@ -10,7 +10,9 @@ import { useEffect, useMemo, useState } from "react";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
 
 import Link from "next/link";
+import LockOutlinedIcon from "@mui/icons-material/LockOutlined";
 import Pagination from "@/components/common/Pagination";
+import { getAccessToken } from "@/lib/api";
 
 const PAGE_SIZE = 10;
 
@@ -24,6 +26,7 @@ export default function HomePage() {
 
   const [page, setPage] = useState(qPage);
   const [activeCat, setActiveCat] = useState(qCat);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
 
   const [cats, setCats] = useState<{ key: string; label: string }[]>([
     { key: "ALL", label: "전체" },
@@ -35,6 +38,20 @@ export default function HomePage() {
   const [loading, setLoading] = useState(false);
   const [err, setErr] = useState<string | null>(null);
 
+  useEffect(() => {
+    const checkLoginStatus = () => {
+      setIsLoggedIn(!!getAccessToken());
+    };
+
+    checkLoginStatus();
+
+    window.addEventListener("loginStatusChanged", checkLoginStatus);
+
+    return () => {
+      window.removeEventListener("loginStatusChanged", checkLoginStatus);
+    };
+  }, []);
+
   function pushQuery(next: { page?: number; category?: string }) {
     const params = new URLSearchParams(sp.toString());
     if (next.page !== undefined) params.set("page", String(next.page));
@@ -43,6 +60,11 @@ export default function HomePage() {
   }
 
   useEffect(() => {
+    if (!isLoggedIn) {
+      setCats([{ key: "ALL", label: "전체" }]);
+      return;
+    }
+
     (async () => {
       try {
         const obj = await fetchCategories();
@@ -51,13 +73,19 @@ export default function HomePage() {
           ...Object.entries(obj).map(([k, v]) => ({ key: k, label: v })),
         ];
         setCats(arr);
-      } catch (e) {
-        console.error(e);
+      } catch {
+        //
       }
     })();
-  }, []);
+  }, [isLoggedIn]);
 
   useEffect(() => {
+    if (!isLoggedIn) {
+      setRawList([]);
+      setLoading(false);
+      return;
+    }
+
     (async () => {
       setLoading(true);
       setErr(null);
@@ -75,13 +103,13 @@ export default function HomePage() {
           totalPages: data.totalPages ?? 1,
           number: data.number ?? requestPage,
         });
-      } catch (e: any) {
-        setErr(e?.message || "목록을 불러오지 못했습니다.");
+      } catch {
+        //
       } finally {
         setLoading(false);
       }
     })();
-  }, [page, activeCat]);
+  }, [page, activeCat, isLoggedIn]);
 
   function changeCat(key: string) {
     setActiveCat(key);
@@ -111,6 +139,33 @@ export default function HomePage() {
   const totalPagesForUI =
     activeCat === "ALL" ? serverMeta.totalPages : localTotalPages;
 
+  if (!isLoggedIn) {
+    return (
+      <main className="mx-auto max-w-3xl p-6">
+        <section className="rounded-lg border border-black/10 bg-white p-12 text-center">
+          <div className="mb-6 flex justify-center">
+            <LockOutlinedIcon
+              sx={{ fontSize: 64, color: "rgba(156,163,175,1)" }} // Tailwind gray-400
+            />
+          </div>
+
+          <h2 className="mb-2 text-2xl font-bold text-gray-900">
+            로그인이 필요합니다
+          </h2>
+          <p className="mb-6 text-gray-600">
+            게시판을 이용하시려면 로그인해주세요.
+          </p>
+          <Link
+            href="/auth/login"
+            className="inline-block rounded-lg bg-black px-6 py-3 text-white hover:bg-black/90 transition-colors"
+          >
+            로그인하기
+          </Link>
+        </section>
+      </main>
+    );
+  }
+
   return (
     <main className="mx-auto max-w-3xl p-6">
       <div className="mb-4 flex flex-wrap gap-2">
@@ -118,7 +173,7 @@ export default function HomePage() {
           <button
             key={c.key}
             onClick={() => changeCat(c.key)}
-            className={`rounded-full px-3 py-1 text-sm ${
+            className={`rounded-full px-3 py-1 text-sm transition-colors ${
               activeCat === c.key
                 ? "bg-black text-white"
                 : "bg-black/5 hover:bg-black/10"
@@ -151,7 +206,10 @@ export default function HomePage() {
         ) : (
           <ul className="divide-y divide-black/10">
             {displayList.map((item) => (
-              <li key={item.id} className="p-4 hover:bg-black/2">
+              <li
+                key={item.id}
+                className="p-4 hover:bg-black/2 transition-colors"
+              >
                 <Link href={`/posts/${item.id}`} className="block">
                   <div className="flex items-center gap-2">
                     <span className="rounded bg-black/5 px-2 py-0.5 text-xs">

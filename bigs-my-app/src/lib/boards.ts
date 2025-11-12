@@ -1,4 +1,4 @@
-import { authJson } from "@/lib/api";
+import { authJson, getAccessToken } from "@/lib/api";
 
 export type BoardItem = {
   id: number;
@@ -21,11 +21,39 @@ export async function fetchBoards(
   const { page = 0, size = 10, category } = params;
   const qs = new URLSearchParams({ page: String(page), size: String(size) });
   if (category && category !== "ALL") qs.set("category", category);
-  return authJson<PageResp<BoardItem>>(`/boards?${qs.toString()}`);
+
+  const path = `/boards?${qs.toString()}`;
+  const hasToken = !!getAccessToken();
+
+  try {
+    if (hasToken) {
+      return await authJson<PageResp<BoardItem>>(path);
+    } else {
+      return {
+        content: [],
+        totalElements: 0,
+        totalPages: 0,
+        number: 0,
+        size: size,
+      } as PageResp<BoardItem>;
+    }
+  } catch (error) {
+    throw error;
+  }
 }
 
 export async function fetchCategories() {
-  return authJson<Record<string, string>>("/boards/categories");
+  const hasToken = !!getAccessToken();
+
+  try {
+    if (hasToken) {
+      return await authJson<Record<string, string>>("/boards/categories");
+    } else {
+      return {} as Record<string, string>;
+    }
+  } catch (error) {
+    throw error;
+  }
 }
 
 export type BoardDetail = {
@@ -38,5 +66,5 @@ export type BoardDetail = {
 };
 
 export async function fetchBoardById(id: string | number) {
-  return authJson<BoardDetail>(`/boards/${id}`, { method: "GET" });
+  return authJson<BoardDetail>(`/boards/${id}`);
 }

@@ -17,6 +17,7 @@ export function setTokens(access: string, refresh: string) {
   if (typeof window === "undefined") return;
   localStorage.setItem(ACCESS_KEY, access);
   localStorage.setItem(REFRESH_KEY, refresh);
+
   window.dispatchEvent(new Event("loginStatusChanged"));
 }
 export function clearTokens() {
@@ -30,7 +31,9 @@ export async function rawJson<T>(
   path: string,
   init: RequestInit = {}
 ): Promise<T> {
-  const res = await fetch(`${API_BASE}${path}`, {
+  const url = `${API_BASE}${path}`;
+
+  const res = await fetch(url, {
     ...init,
     headers: {
       "Content-Type": "application/json",
@@ -38,6 +41,7 @@ export async function rawJson<T>(
     },
     cache: "no-store",
   });
+
   if (!res.ok) {
     const msg = await res.text().catch(() => "");
     throw new Error(msg || `HTTP ${res.status}`);
@@ -59,7 +63,10 @@ export async function signin(username: string, password: string) {
 
 export async function refresh() {
   const token = getRefreshToken();
-  if (!token) throw new Error("No refresh token");
+  if (!token) {
+    throw new Error("No refresh token");
+  }
+
   const data = await rawJson<{ accessToken: string; refreshToken: string }>(
     "/auth/refresh",
     { method: "POST", body: JSON.stringify({ refreshToken: token }) }
@@ -73,15 +80,17 @@ export async function authJson<T>(
   init: RequestInit = {}
 ): Promise<T> {
   const first = await tryOnce(path, init);
-  if (first.ok) return first.json() as Promise<T>;
+  if (first.ok) {
+    return first.json() as Promise<T>;
+  }
 
   if (first.status === 401) {
     try {
       await refresh();
       const second = await tryOnce(path, init);
-      if (second.ok) return second.json() as Promise<T>;
-      const msg = await second.text();
-      throw new Error(msg || `HTTP ${second.status}`);
+      if (second.ok) {
+        return second.json() as Promise<T>;
+      }
     } catch (e: unknown) {
       clearTokens();
       const message = e instanceof Error ? e.message : "Auth failed";
@@ -95,13 +104,19 @@ export async function authJson<T>(
 
 async function tryOnce(path: string, init: RequestInit) {
   const access = getAccessToken();
-  return fetch(`${API_BASE}${path}`, {
+  const url = `${API_BASE}${path}`;
+
+  const headers = {
+    "Content-Type": "application/json",
+    ...(access ? { Authorization: `Bearer ${access}` } : {}),
+    ...(init.headers || {}),
+  };
+
+  const response = await fetch(url, {
     ...init,
-    headers: {
-      "Content-Type": "application/json",
-      ...(access ? { Authorization: `Bearer ${access}` } : {}),
-      ...(init.headers || {}),
-    },
+    headers,
     cache: "no-store",
   });
+
+  return response;
 }
